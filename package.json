@@ -1,0 +1,25 @@
+{
+  "name": "fco-submission-queue-monitor",
+  "main": "server.js",
+  "dependencies": {
+    "cron": "^1.1.0",
+    "dotenv": "^2.0.0",
+    "pg": "^6.0.2",
+    "sendgrid": "^3.0.7",
+    "util": "^0.10.3",
+    "winston": "^2.2.0"
+  },
+  "scripts": {
+    "test": "node node_modules/mocha/bin/mocha --recursive -R xunit-file test/",
+    "coverage": "node ./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- --recursive -R tap \"test/\" > test.tap && istanbul report clover",
+    "lint": "jshint --reporter checkstyle . > linting.xml"
+  },
+  "devDependencies": {
+    "mocha": "^2.3.4",
+    "should": "^8.0.2",
+    "supertest": "^1.1.0",
+    "xunit-file": "0.0.9",
+    "istanbul": "^0.4.2",
+    "jshint": "^2.9.1"
+  }
+}

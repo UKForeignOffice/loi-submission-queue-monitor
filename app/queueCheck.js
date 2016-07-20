@@ -70,7 +70,7 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
                 }
             );
 
-            /*
+
 
 
             // =================================================================================================
@@ -85,37 +85,32 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
                 "SELECT a.\"application_id\", a.\"application_reference\", a.\"application_start_date\"" +
                 " FROM \"Application\" AS a " +
                 " INNER JOIN \"ExportedApplicationData\" AS ead ON a.\"application_id\" = ead.\"application_id\"" +
-                " WHERE a.\"submitted\" = 'draft';"
-            );
+                " WHERE a.\"submitted\" = 'draft';",
+                function(err, results) {
+                    if(err) console.error(err);
 
-            var results = [];
+                    // if we find any results then send an email notification containing affected application IDs
+                    if (results.length > 0) {
 
-            // Stream results back one row at a time
-            queryDraftApplications.on('row', function (row) {
-                results.push(row);
-            });
+                        results.forEach(function(value) {
+                            messageDraftApplications = messageDraftApplications + '\n' + value.application_id + '\n';
+                        });
 
-            // After all data is returned, close connection and return results
-            queryDraftApplications.on('end', function() {
-                done();
+                        // log message in log file
+                        console.info('[FCO-LOI-Submission-Message-Queue-Check-Draft-Applications-Error] ' + messageDraftApplications);
 
-                // if we find any results then send an email notification containing affected application IDs
-                if (results.length > 0) {
-
-                    results.forEach(function(value) {
-                        messageDraftApplications = messageDraftApplications + '\n' + value.application_id + '\n';
-                    });
-
-                    // log message in log file
-                    console.info('[FCO-LOI-Submission-Message-Queue-Check-Draft-Applications-Error] ' + messageDraftApplications);
-
-                    // send email notification if configured to do so
-                    if (config.sendEmails == 'Y') {
-                        sendMail.sendNotificationEmail(sendGrid, config, messageDraftApplications);
+                        // send email notification if configured to do so
+                        if (config.sendEmails == 'Y') {
+                            sendMail.sendNotificationEmail(sendGrid, config, messageDraftApplications);
+                        }
                     }
+
+                    // disconnect the client
+                    client.end(function (err) {
+                        if (err) console.error(err);
+                    });
                 }
-            });
-            */
+            );
         }
     });
 

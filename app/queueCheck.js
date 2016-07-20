@@ -29,13 +29,12 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
     var connectionString = config.db;
 
     // connect to database
-    pg.connect(connectionString, function(err, client, done) {
+    var client = new pg.Client(connectionString);
+    client.connect(function(err) {
 
         // Handle connection errors
-        if(err) {
-            done();
-            console.error(err);
-        }
+        if(err) console.error(err)
+
         else {
 
             // =============================================================================
@@ -49,24 +48,29 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
                 "SELECT \"application_id\", \"application_reference\", \"submitted\", \"application_start_date\"" +
                 " FROM \"Application\"" +
                 " WHERE (\"submitted\" = 'submitted' OR \"submitted\" = 'queued')" +
-                " AND \"application_start_date\" > ( NOW() - INTERVAL '1 hour' );"
+                " AND \"application_start_date\" > ( NOW() - INTERVAL '1 hour' );",
+                function(err, results) {
+                    if(err) console.error(err);
+
+                    if (results.rowCount < 1) { // if none found
+
+                        // log message in log file
+                        console.info('[FCO-LOI-Submission-Message-Queue-Check-Queued-Applications-Error] ' + messageNonQueued);
+
+                        // send email notification if configured to do so
+                        if (config.sendEmails == 'Y') {
+                            sendMail.sendNotificationEmail(sendGrid, config, messageNonQueued);
+                        }
+                    }
+
+                    // disconnect the client
+                    client.end(function (err) {
+                        if (err) console.error(err);
+                    });
+                }
             );
 
-            // After all data is returned, close connection and count number of returned rows
-            queryNonQueued.on('end', function (results) {
-                done();
-
-                if (results.rowCount < 1) { // if none found
-
-                    // log message in log file
-                    console.info('[FCO-LOI-Submission-Message-Queue-Check-Queued-Applications-Error] ' + messageNonQueued);
-
-                    // send email notification if configured to do so
-                    if (config.sendEmails == 'Y') {
-                        sendMail.sendNotificationEmail(sendGrid, config, messageNonQueued);
-                    }
-                }
-            });
+            /*
 
 
             // =================================================================================================
@@ -111,6 +115,7 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
                     }
                 }
             });
+            */
         }
     });
 

@@ -12,10 +12,6 @@ var sendGrid = sendGridSettings.proxy ? require('sendgrid').SendGrid(sendGridSet
 
 var sendMail = require('./sendMail');
 
-// =============================================================================
-// CHECK APPLICATION DATA
-// =============================================================================
-
 // build the schedule from config values - uses CRON standard format
 var minuteDataCheck = config.scheduleDataCheck.minute;
 var hourDataCheck = config.scheduleDataCheck.hour;
@@ -24,6 +20,7 @@ var monthDataCheck = config.scheduleDataCheck.month;
 var weekdayDataCheck = config.scheduleDataCheck.weekday;
 var scheduleDataCheck = minuteDataCheck + ' ' + hourDataCheck + ' ' + dayDataCheck + ' ' + monthDataCheck + ' ' + weekdayDataCheck;
 
+// run checks based on defined Cron schedule
 var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
 
     var connectionString = config.db;
@@ -38,8 +35,28 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
         else {
 
             // =============================================================================
-            // Check for applications queued or submitted in the last hour.
-            // If none are found, send an email notification to subscribed addresses.
+            // This check determines whether or not any applications have been queued or
+            // submitted within the last hour. If there are none then this is a symptom
+            // of possible problems with the queueing of applications. The check takes the
+            // form of a database query which looks for applications created in the last
+            // hour with a status of 'queued' or 'submitted'
+            //
+            // A sensible approach is to run the check once an hour, within the working day,
+            // so on the hour between 9am and 6pm Monday to Friday. This is defined by the
+            // Cron schedule in the code above
+            //
+            // If no applications have been queued in the last hour then a message is
+            // written to the log file with an appropriate prefix, and optionally an email
+            // notification is sent via SendGrid
+            //
+            // To requeue applications in the event of an issue being identified, use the
+            // following steps:
+            // -- Connect to the DATA server in the affected environment
+            // -- kill all RabbitMQ processes using the command 'sudo killall -u rabbitmq'
+            // -- start RabbitMQ with the command 'sudo service rabbitmq-server start'
+            // -- for each affected application ID run the following command, substituting
+            //    the appropriate ID in place of <APPID>:
+            //       rabbitmqadmin publish exchange=submissionExchange routing_key=submission payload=<APPID>
             // =============================================================================
 
             var messageNonQueued = 'No applications have been queued or submitted in the last hour';
@@ -73,11 +90,29 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
 
 
 
-            // =================================================================================================
-            // Check for any applications with a status of draft which have an entry in ExportedApplicationData
-            // This is a symptom of the application not being added to the queue correctly.
-            // If any are found, send an email notification and list the affected applications
-            // =================================================================================================
+            // =============================================================================
+            // This check determines whether or not any applications have a status of
+            // 'draft' but also have a corresponding row in the ExportedApplicationData
+            // table. If there are any then this is a symptom of possible problems with
+            // the queueing of applications. The check takes the form of a database query
+            //
+            // A sensible approach is to run the check once an hour, within the working day,
+            // so on the hour between 9am and 6pm Monday to Friday. This is defined by the
+            // Cron schedule in the code above
+            //
+            // If any potentially affected applications are found, then a message is
+            // written to the log file with an appropriate prefix, and optionally an email
+            // notification is sent via SendGrid
+            //
+            // To requeue applications in the event of an issue being identified, use the
+            // following steps:
+            // -- Connect to the DATA server in the affected environment
+            // -- kill all RabbitMQ processes using the command 'sudo killall -u rabbitmq'
+            // -- start RabbitMQ with the command 'sudo service rabbitmq-server start'
+            // -- for each affected application ID run the following command, substituting
+            //    the appropriate ID in place of <APPID>:
+            //       rabbitmqadmin publish exchange=submissionExchange routing_key=submission payload=<APPID>
+            // =============================================================================
 
             var messageDraftApplications = 'There are potential issues with queueing applications. The following application IDs may not have been queued correctly:\n';
 

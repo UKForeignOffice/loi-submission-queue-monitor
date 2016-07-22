@@ -14,7 +14,7 @@ module.exports = {
         var email = new helper.Email("fco-submission-queue-monitor@get-document-legalised.service.gov.uk", "FCO Submission Queue Monitor");
         mail.setFrom(email);
 
-        mail.setSubject("FCO Legalisation - Submission Queue Monitor ( " + config.environment + ")");
+        mail.setSubject("FCO Legalisation - Submission Queue Monitor (" + config.environment + ")");
 
         var personalization = new helper.Personalization();
         var recipients = config.subscribers;

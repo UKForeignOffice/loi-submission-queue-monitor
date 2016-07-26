@@ -59,7 +59,16 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
             //       rabbitmqadmin publish exchange=submissionExchange routing_key=submission payload=<APPID>
             // =============================================================================
 
-            var messageNonQueued = 'No applications have been queued or submitted in the last hour';
+            var messageNonQueued = 'No applications have been queued or submitted in the last hour\n\n' +
+                'Please confirm the RabbitMQ service hosted on the FCO-LOI-DATA server is running. To requeue applications in the event of an issue being identified, use the' +
+                'following steps:\n\n' +
+                '- Connect to the DATA server in the affected environment' +
+                '- kill all RabbitMQ processes using the command "sudo killall -u rabbitmq"' +
+                '- start RabbitMQ with the command "sudo service rabbitmq-server start"' +
+                '- for each affected application ID run the following command, substituting the appropriate ID in place of APPID:\n\n' +
+                'rabbitmqadmin publish exchange=submissionExchange routing_key=submission payload=APPID';
+
+            console.info('Running queue check - applications queued in last hour');
 
             var queryNonQueued = client.query(
                 "SELECT \"application_id\", \"application_reference\", \"submitted\", \"application_start_date\"" +
@@ -116,6 +125,8 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
 
             var messageDraftApplications = 'There are potential issues with queueing applications. The following application IDs may not have been queued correctly:\n';
 
+            console.info('Running queue check - draft applications with an entry in ExportedApplicationData');
+
             var queryDraftApplications = client.query(
                 "SELECT a.\"application_id\", a.\"application_reference\", a.\"application_start_date\"" +
                 " FROM \"Application\" AS a " +
@@ -130,6 +141,15 @@ var jobDataCheck = new cron.CronJob(scheduleDataCheck, function() {
                         results.forEach(function(value) {
                             messageDraftApplications = messageDraftApplications + '\n' + value.application_id + '\n';
                         });
+
+                        messageDraftApplications = messageDraftApplications +
+                        'Please confirm the RabbitMQ service hosted on the FCO-LOI-DATA server is running. To requeue applications in the event of an issue being identified, use the' +
+                        'following steps:\n\n' +
+                        '- Connect to the DATA server in the affected environment' +
+                        '- kill all RabbitMQ processes using the command "sudo killall -u rabbitmq"' +
+                        '- start RabbitMQ with the command "sudo service rabbitmq-server start"' +
+                        '- for each affected application ID run the following command, substituting the appropriate ID in place of APPID:\n\n' +
+                        'rabbitmqadmin publish exchange=submissionExchange routing_key=submission payload=APPID';
 
                         // log message in log file
                         console.info('[FCO-LOI-Submission-Message-Queue-Check-Draft-Applications-Error] ' + messageDraftApplications);
